@@ -379,7 +379,6 @@ class AMQPConnection extends AbstractChannel
                                 $read_write_timeout = 3,
                                 $context = null)
     {
-
         if($user && $password)
         {
             $login_response = new AMQPWriter();
@@ -449,6 +448,38 @@ class AMQPConnection extends AbstractChannel
 
             @fclose($this->sock); $this->sock=NULL;
         }
+    }
+
+    /**
+     * unbind queue from an exchange
+     */
+    public function queue_unbind($queue, $exchange, $routing_key = "",
+        $arguments=NULL, $ticket=NULL)
+    {
+        if($arguments == NULL)
+            $arguments = array();
+
+        $args = new AMQPWriter();
+        if($ticket != NULL)
+            $args->write_short($ticket);
+        else
+            $args->write_short($this->default_ticket);
+        $args->write_shortstr($queue);
+        $args->write_shortstr($exchange);
+        $args->write_shortstr($routing_key);
+        $args->write_table($arguments);
+        $this->send_method_frame(array(50, 50), $args);
+
+        return $this->wait(array(
+                               "50,51"    // Channel.queue_unbind_ok
+                           ));
+    }
+
+    /**
+     * confirm unbind successful
+     */
+    protected function queue_unbind_ok($args)
+    {
     }
 
     public function __destruct()
